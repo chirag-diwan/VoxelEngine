@@ -28,7 +28,7 @@ Shader::Shader(const char * vertexShader , const char * fragmentShader){
     const char * vertexShaderContent = buffer.c_str();
     std::string buffer2 = getFileContent(fragmentShader);
     const char * fragmentShaderContent = buffer2.c_str();
-    
+
 
     GLuint VertexShader = glCreateShader(GL_VERTEX_SHADER);
     GLuint FragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -69,6 +69,23 @@ Shader::Shader(const char * vertexShader , const char * fragmentShader){
 
     glDeleteShader(VertexShader);
     glDeleteShader(FragmentShader);
+}
+
+
+void Shader::setViewMatrix(GLfloat* projectionMatrixDP , GLfloat* viewMatrixDP){
+    GLint ViewLocation = glGetUniformLocation(ID , "ViewMatrix");
+    GLint ProjectionLocation = glGetUniformLocation(ID , "ProjectionMatrix");
+    if(ViewLocation == -1){
+        std::cerr << "No Such uniform as ViewMatrix";
+        std::exit(EXIT_FAILURE);
+    }
+    if(ProjectionLocation == -1){
+        std::cerr << "No Such uniform as ViewMatrix";
+        std::exit(EXIT_FAILURE);
+    }
+    glUniformMatrix4fv(ViewLocation , 1 , GL_FALSE , viewMatrixDP);
+    glUniformMatrix4fv(ProjectionLocation , 1 , GL_FALSE , projectionMatrixDP);
+
 }
 
 
