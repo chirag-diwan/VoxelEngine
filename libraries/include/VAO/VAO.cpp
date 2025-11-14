@@ -20,7 +20,7 @@ void VAO::Unbind(){
 }
 
 void VAO::Delete(){
-    glDeleteBuffers(1, &ID);
+    glDeleteVertexArrays(1, &ID);
 }
 
 

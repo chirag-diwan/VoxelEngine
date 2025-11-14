@@ -35,8 +35,13 @@ int main() {
     };
 
     VAO vao;
-    vao.Bind();
     VBO vbo(vertices, sizeof(vertices), GL_STATIC_DRAW);
+    vao.Bind();
+    vbo.Bind();
+    vao.LinkVbo(vbo, 0);
+    vbo.Unbind();
+    vao.Unbind();
+
     Shader shader("shaders/default.vert" , "shaders/default.frag");
     shader.Activate();
     while (!glfwWindowShouldClose(window)) {
