@@ -1,4 +1,5 @@
 #include "shader_class.h"
+#include <cstdlib>
 #include <iostream>
 #define GLFW_INCLUDE_NONE
 #include <fstream>
@@ -9,10 +10,14 @@
 
 std::string getFileContent(const char * filepath){
     std::ifstream file(filepath);
+    if(file.fail()){
+        std::cerr << "Error Opening file :: " << filepath;
+        std::exit(EXIT_FAILURE);
+    }
     std::string line;
     std::string fileContent;
     while(std::getline(file , line)){
-        fileContent += line;
+        fileContent += line + "\n";
     }
     return fileContent;
 }
@@ -21,8 +26,8 @@ std::string getFileContent(const char * filepath){
 Shader::Shader(const char * vertexShader , const char * fragmentShader){
     std::string buffer = getFileContent(vertexShader);
     const char * vertexShaderContent = buffer.c_str();
-    buffer = getFileContent(fragmentShader);
-    const char * fragmentShaderContent = buffer.c_str();
+    std::string buffer2 = getFileContent(fragmentShader);
+    const char * fragmentShaderContent = buffer2.c_str();
     
 
     GLuint VertexShader = glCreateShader(GL_VERTEX_SHADER);

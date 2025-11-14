@@ -4,8 +4,7 @@
 #include "./VBO.h"
 
 
-template <typename T>
-VBO<T>::VBO(T* vertices , GLsizeiptr size , GLuint usage){
+VBO::VBO(GLfloat* vertices , GLsizeiptr size , GLuint usage){
     glGenBuffers(1, &ID);
     glBindVertexArray(ID);
     glBindBuffer(GL_ARRAY_BUFFER, ID);
@@ -13,19 +12,16 @@ VBO<T>::VBO(T* vertices , GLsizeiptr size , GLuint usage){
 }
 
 
-template <typename T>
-void VBO<T>::Bind(){
+void VBO::Bind(){
     glBindBuffer(GL_ARRAY_BUFFER, ID);
 }
 
 
-template <typename T>
-void VBO<T>::Unbind(){
+void VBO::Unbind(){
     glBindBuffer(GL_ARRAY_BUFFER, ID);
 }
 
-template <typename T>
-void VBO<T>::Delete(){
-    glDeleteBuffers(1 , ID);
+void VBO::Delete(){
+    glDeleteBuffers(1 , &ID);
 }
 

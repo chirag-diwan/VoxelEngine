@@ -1,31 +1,48 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.16)
 project(VoxelEngine)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Source files
+# Collect Sources
+file(GLOB_RECURSE LIB_SOURCES
+    ${CMAKE_SOURCE_DIR}/libraries/include/*/*.cpp
+)
+
 set(SOURCES
     src/main.cpp
     src/glad.c
+    ${LIB_SOURCES}
 )
 
-# Include directories
-include_directories(
-    ${PROJECT_SOURCE_DIR}/libraries/include
+# Executable
+add_executable(OpenGLApp ${SOURCES})
+
+# Includes
+target_include_directories(OpenGLApp PRIVATE
+    ${CMAKE_SOURCE_DIR}/libraries/include
 )
 
-# Find OpenGL and GLFW
-find_package(OpenGL REQUIRED)
-find_package(glfw3 REQUIRED)
-
-# Add executable
-add_executable(${PROJECT_NAME} ${SOURCES})
-
-# Link all necessary libraries
-target_link_libraries(${PROJECT_NAME}
-    glfw
-    ${OPENGL_LIBRARIES}
-    dl
-    pthread
+# Shader copy
+add_custom_target(copy_shaders ALL
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_SOURCE_DIR}/src/shaders
+            ${CMAKE_BINARY_DIR}/shaders
 )
+add_dependencies(OpenGLApp copy_shaders)
+
+# GLFW
+find_package(glfw3 3.3 REQUIRED)
+target_link_libraries(OpenGLApp PRIVATE glfw)
+
+# Linux OpenGL + X11
+if(UNIX AND NOT APPLE)
+    target_link_libraries(OpenGLApp PRIVATE
+        GL
+        X11
+        Xrandr
+        Xi
+        pthread
+        dl
+    )
+endif()

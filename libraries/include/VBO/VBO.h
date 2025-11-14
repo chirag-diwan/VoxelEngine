@@ -6,11 +6,10 @@
 #include <GLFW/glfw3.h>
 
 
-template <typename T>
 class VBO{
 public:
     GLuint ID;
-    VBO(T* vertices , GLsizeiptr size , GLuint usage);
+    VBO(GLfloat* vertices , GLsizeiptr size , GLuint usage);
 
     void Bind();
     void Unbind();
