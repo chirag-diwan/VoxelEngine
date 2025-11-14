@@ -4,28 +4,23 @@
 #include "./EBO.h"
 
 
-template <typename T>
-EBO<T>::EBO(T* vertices , GLsizeiptr size , GLuint usage){
+EBO::EBO(GLuint* vertices , GLsizeiptr size , GLuint usage){
     glGenBuffers(1, &ID);
-    glBindVertexArray(ID);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ID);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(vertices), vertices, usage);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, size, vertices, usage);
 }
 
 
-template <typename T>
-void EBO<T>::Bind(){
+void EBO::Bind(){
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ID);
 }
 
 
-template <typename T>
-void EBO<T>::Unbind(){
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ID);
+void EBO::Unbind(){
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
-template <typename T>
-void EBO<T>::Delete(){
-    glDeleteBuffers(1 , ID);
+void EBO::Delete(){
+    glDeleteBuffers(1 , &ID);
 }
 

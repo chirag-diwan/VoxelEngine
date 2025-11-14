@@ -29,13 +29,22 @@ int main() {
     }
 
     GLfloat vertices[] = {
-        -0.5f, 0.5f, 0.0f,
-         0.4f, 0.1f, 0.0f,
-         0.0f, 0.0f, 0.0f
+        0.5f,  0.5f, 0.0f,  
+        0.5f, -0.5f, 0.0f, 
+        -0.5f, -0.5f, 0.0f,
+        -0.5f,  0.5f, 0.0f 
     };
 
+    GLuint indices[] = {
+        0,1,2,
+        2,3,0
+    };
+    
+
     VAO vao;
+    EBO ebo(indices , sizeof(indices) , GL_STATIC_DRAW);
     VBO vbo(vertices, sizeof(vertices), GL_STATIC_DRAW);
+
     vao.Bind();
     vbo.Bind();
     vao.LinkVbo(vbo, 0);
@@ -50,11 +59,12 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT);
 
         glUseProgram(shader.ID);
-        glBindVertexArray(vao.ID);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-
-        glfwSwapBuffers(window);
+        vao.Bind();
+        glDrawElements(GL_TRIANGLES , sizeof(indices)/sizeof(indices[0]),GL_UNSIGNED_INT , 0);
+        vao.Unbind();
+        //glfwSwapBuffers(window);
     }
+    ebo.Delete();
     vao.Delete();
     vbo.Delete();
     shader.Delete();
