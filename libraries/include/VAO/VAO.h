@@ -10,7 +10,9 @@ class VAO{
 public:
     GLuint ID;
     VAO();
-    void LinkVbo(VBO vbo , GLuint layout);
+    void LinkFloatVbo(VBO& vbo, GLuint index, GLint components, GLsizei strideFloats, void* offset);
+    void LinkIntVbo(VBO& vbo, GLuint index, GLint components, GLsizei strideFloats, void* offset);
+
     void Bind();
     void Unbind();
     void Delete();

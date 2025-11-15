@@ -1,11 +1,35 @@
 #include "VAO.h"
 
-void VAO::LinkVbo(VBO vbo , GLuint layout){
+void VAO::LinkFloatVbo(VBO& vbo, GLuint index, GLint components, GLsizei strideFloats, void* offset)
+{
     vbo.Bind();
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(
+        index, 
+        components, 
+        GL_FLOAT, 
+        GL_FALSE, 
+        strideFloats * sizeof(float), 
+        offset
+    );
+    glEnableVertexAttribArray(index);
     vbo.Unbind();
 }
+
+void VAO::LinkIntVbo(VBO& vbo, GLuint index, GLint components, GLsizei strideFloats, void* offset)
+{
+    vbo.Bind();
+    glVertexAttribPointer(
+        index, 
+        components, 
+        GL_INT, 
+        GL_FALSE, 
+        strideFloats * sizeof(int), 
+        offset
+    );
+    glEnableVertexAttribArray(index);
+    vbo.Unbind();
+}
+
 
 VAO::VAO(){
     glGenVertexArrays(1, &ID);

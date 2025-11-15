@@ -31,29 +31,66 @@ void mousePosCallback(GLFWwindow* window, double xpos, double ypos){
     y = ypos;
 }
 
+GLint vertices[] = {
 
+    -1, -1, -1,   0, 0, -1,
+    1, -1, -1,   0, 0, -1,
+    1,  1, -1,   0, 0, -1,
+    -1,  1, -1,   0, 0, -1,
 
-GLfloat vertices[] = {
-    -0.5f, -0.5f, -0.5f, 0.5f, -0.5f, -0.5f, 0.5f, 0.5f, -0.5f, -0.5f, 0.5f, -0.5f, -0.5f, -0.5f, 0.5f, 0.5f, -0.5f, 0.5f, 0.5f, 0.5f, 0.5f, -0.5f, 0.5f, 0.5f
+    // BACK (+Z)
+    -1, -1,  1,   0, 0,  1,
+    1, -1,  1,   0, 0,  1,
+    1,  1,  1,   0, 0,  1,
+    -1,  1,  1,   0, 0,  1,
+
+    // LEFT (-X)
+    -1, -1, -1,  -1, 0,  0,
+    -1, -1,  1,  -1, 0,  0,
+    -1,  1,  1,  -1, 0,  0,
+    -1,  1, -1,  -1, 0,  0,
+
+    1, -1, -1,   1, 0,  0,
+    1, -1,  1,   1, 0,  0,
+    1,  1,  1,   1, 0,  0,
+    1,  1, -1,   1, 0,  0,
+
+    -1,  1, -1,   0, 1,  0,
+    1,  1, -1,   0, 1,  0,
+    1,  1,  1,   0, 1,  0,
+    -1,  1,  1,   0, 1,  0,
+
+    -1, -1, -1,   0,-1,  0,
+    1, -1, -1,   0,-1,  0,
+    1, -1,  1,   0,-1,  0,
+    -1, -1,  1,   0,-1,  0
+
 };
 
 
 GLuint indices[] = {
 
-    0, 1, 2, 2, 3, 0,
-    5, 4, 7, 7, 6, 5,
-    4, 0, 3, 3, 7, 4,
-    1, 5, 6, 6, 2, 1,
-    3, 2, 6, 6, 7, 3,
-    4, 5, 1, 1, 0, 4
+    0, 1, 2,   2, 3, 0,
 
+    // BACK  CCW
+    4, 7, 6,   6, 5, 4,
+
+    // LEFT  CCW
+    8, 11, 10, 10, 9, 8,
+
+    // RIGHT CCW
+    12, 13, 14, 14, 15, 12,
+
+    // TOP CCW
+    16, 17, 18, 18, 19, 16,
+
+    // BOTTOM CCW
+    20, 23, 22, 22, 21, 20
 };
 
 
 float mousex = 0;
 float mousey = 0;
-
-
 
 
 int main() {
@@ -88,7 +125,10 @@ int main() {
     VBO vbo(vertices, sizeof(vertices), GL_DYNAMIC_DRAW);
     EBO ebo(indices , sizeof(indices) , GL_DYNAMIC_DRAW);
 
-    vao.LinkVbo(vbo, 0);
+
+    vao.LinkIntVbo(vbo, 0, 3, 6, (void*)0);     
+    vao.LinkIntVbo(vbo, 1, 3, 6, (void*)(3 * sizeof(int)));
+
     vbo.Unbind();
     vao.Unbind();
 
@@ -106,11 +146,10 @@ int main() {
 
     shader.setViewMatrix(glm::value_ptr(projection), glm::value_ptr(view));
 
-    glPolygonMode(GL_FRONT_AND_BACK , GL_LINE);
-
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);  
     glFrontFace(GL_CW);
+
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS); 
 
