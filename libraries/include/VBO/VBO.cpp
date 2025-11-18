@@ -16,6 +16,12 @@ VBO::VBO(GLint* vertices , GLsizeiptr size , GLuint usage){
     glBufferData(GL_ARRAY_BUFFER, size, vertices, usage);
 }
 
+VBO::VBO(Vertex* vertices , GLsizeiptr size , GLuint usage){
+    glGenBuffers(1, &ID);
+    glBindBuffer(GL_ARRAY_BUFFER, ID);
+    glBufferData(GL_ARRAY_BUFFER, size, vertices, usage);
+}
+
 
 void VBO::Bind(){
     glBindBuffer(GL_ARRAY_BUFFER, ID);

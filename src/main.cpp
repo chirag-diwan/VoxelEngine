@@ -1,8 +1,10 @@
+#define GLM_ENABLE_EXPERIMENTAL
+#define GLFW_INCLUDE_NONE
 #include <cstdlib>
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <iostream>
-#define GLFW_INCLUDE_NONE
+#include <vector>
 #include <GLFW/glfw3.h>
 #include "../libraries/include/glad/glad.h"
 #include "../libraries/include/VBO/VBO.h"
@@ -11,6 +13,9 @@
 #include "../libraries/include/shader/shader_class.h"
 #include "../libraries/include/camera/camera.h"
 #include <glm/gtc/type_ptr.hpp>
+#include <sys/types.h>
+#include "../libraries/include/glad/glad.h"
+#include "../libraries/include/World/World.h"
 
 
 bool keys[1024];
@@ -31,69 +36,20 @@ void mousePosCallback(GLFWwindow* window, double xpos, double ypos){
     y = ypos;
 }
 
-GLint vertices[] = {
-
-    -1, -1, -1,   0, 0, -1,
-    1, -1, -1,   0, 0, -1,
-    1,  1, -1,   0, 0, -1,
-    -1,  1, -1,   0, 0, -1,
-
-    // BACK (+Z)
-    -1, -1,  1,   0, 0,  1,
-    1, -1,  1,   0, 0,  1,
-    1,  1,  1,   0, 0,  1,
-    -1,  1,  1,   0, 0,  1,
-
-    // LEFT (-X)
-    -1, -1, -1,  -1, 0,  0,
-    -1, -1,  1,  -1, 0,  0,
-    -1,  1,  1,  -1, 0,  0,
-    -1,  1, -1,  -1, 0,  0,
-
-    1, -1, -1,   1, 0,  0,
-    1, -1,  1,   1, 0,  0,
-    1,  1,  1,   1, 0,  0,
-    1,  1, -1,   1, 0,  0,
-
-    -1,  1, -1,   0, 1,  0,
-    1,  1, -1,   0, 1,  0,
-    1,  1,  1,   0, 1,  0,
-    -1,  1,  1,   0, 1,  0,
-
-    -1, -1, -1,   0,-1,  0,
-    1, -1, -1,   0,-1,  0,
-    1, -1,  1,   0,-1,  0,
-    -1, -1,  1,   0,-1,  0
-
-};
-
-
-GLuint indices[] = {
-
-    0, 1, 2,   2, 3, 0,
-
-    // BACK  CCW
-    4, 7, 6,   6, 5, 4,
-
-    // LEFT  CCW
-    8, 11, 10, 10, 9, 8,
-
-    // RIGHT CCW
-    12, 13, 14, 14, 15, 12,
-
-    // TOP CCW
-    16, 17, 18, 18, 19, 16,
-
-    // BOTTOM CCW
-    20, 23, 22, 22, 21, 20
-};
-
 
 float mousex = 0;
 float mousey = 0;
 
 
+
 int main() {
+    World world;
+    world.generateMesh();
+    auto vertices = world.getVerticesRefrence();
+    auto indices = world.getIndicesRefrence();
+
+    std::cout << "Generated verts: " << vertices.size() << ", indices: " << indices.size() << std::endl;
+
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -122,8 +78,8 @@ int main() {
     VAO vao;
     vao.Bind();
 
-    VBO vbo(vertices, sizeof(vertices), GL_DYNAMIC_DRAW);
-    EBO ebo(indices , sizeof(indices) , GL_DYNAMIC_DRAW);
+    VBO vbo(vertices.data(), vertices.size()*sizeof(Vertex), GL_DYNAMIC_DRAW);
+    EBO ebo(indices.data() , indices.size()*sizeof(indices[0]) , GL_DYNAMIC_DRAW);
 
 
     vao.LinkIntVbo(vbo, 0, 3, 6, (void*)0);     
@@ -148,10 +104,12 @@ int main() {
 
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);  
-    glFrontFace(GL_CW);
+    glFrontFace(GL_CCW);
 
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS); 
+
+    glPolygonMode(GL_FRONT_AND_BACK , GL_LINE);
 
     float lastTime = 0;
     float currentTime = 0;
@@ -182,7 +140,7 @@ int main() {
 
         glUseProgram(shader.ID);
         vao.Bind();
-        glDrawElements(GL_TRIANGLES , sizeof(indices)/sizeof(indices[0]),GL_UNSIGNED_INT , 0);
+        glDrawElements(GL_TRIANGLES , indices.size(),GL_UNSIGNED_INT , 0);
         vao.Unbind();
         glfwSwapBuffers(window);
         lastTime = currentTime;
