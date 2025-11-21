@@ -1,5 +1,9 @@
 #include "VAO.h"
 
+VAO::VAO() : ID(0){
+
+}
+
 void VAO::LinkFloatVbo(VBO& vbo, GLuint index, GLint components, GLsizei strideFloats, void* offset)
 {
     vbo.Bind();
@@ -30,8 +34,7 @@ void VAO::LinkIntVbo(VBO& vbo, GLuint index, GLint components, GLsizei strideFlo
     vbo.Unbind();
 }
 
-
-VAO::VAO(){
+void VAO::Refresh(){
     glGenVertexArrays(1, &ID);
 }
 
@@ -46,6 +49,3 @@ void VAO::Unbind(){
 void VAO::Delete(){
     glDeleteVertexArrays(1, &ID);
 }
-
-
-

@@ -16,10 +16,10 @@ set(SOURCES
 )
 
 # Executable
-add_executable(OpenGLApp ${SOURCES})
+add_executable(VoxelEngine ${SOURCES})
 
 # Includes
-target_include_directories(OpenGLApp PRIVATE
+target_include_directories(VoxelEngine PRIVATE
     ${CMAKE_SOURCE_DIR}/libraries/include
 )
 
@@ -29,15 +29,15 @@ add_custom_target(copy_shaders ALL
             ${CMAKE_SOURCE_DIR}/src/shaders
             ${CMAKE_BINARY_DIR}/shaders
 )
-add_dependencies(OpenGLApp copy_shaders)
+add_dependencies(VoxelEngine copy_shaders)
 
 # GLFW
 find_package(glfw3 3.3 REQUIRED)
-target_link_libraries(OpenGLApp PRIVATE glfw)
+target_link_libraries(VoxelEngine PRIVATE glfw)
 
 # Linux OpenGL + X11
 if(UNIX AND NOT APPLE)
-    target_link_libraries(OpenGLApp PRIVATE
+    target_link_libraries(VoxelEngine PRIVATE
         GL
         X11
         Xrandr

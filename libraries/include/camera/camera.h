@@ -44,7 +44,7 @@ public:
 
     float sensitivity = 0.2f;
     
-    float cameraSpeed = 1.0f;
+    float cameraSpeed = 3.0f;
 
 public:
 

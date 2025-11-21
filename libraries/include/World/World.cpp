@@ -1,3 +1,6 @@
+#include <glm/ext/scalar_constants.hpp>
+#include <glm/ext/vector_float2.hpp>
+#include <glm/ext/vector_float3.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <vector>
 #include <functional>
@@ -7,24 +10,21 @@
 #include "../glad/glad.h"
 #include "../VBO/VBO.h"  
 #include "./World.h"
-#include "../Noise/Noise.h"
 
 
 #define CHUNK_SIZE 16
 
-using i_vec3 = glm::ivec3;
-
-void World::setBlocks() {
+void World::setBlocks(glm::ivec3 chunkStart) {
     for(int x = 0; x < CHUNK_SIZE; x++) {
         for(int y = 0; y < CHUNK_SIZE; y++) {
-            for(int z = 0; z < CHUNK_SIZE; z++) {
-                Blocks[x][y][z] = BlockType::SOLID;
+            for(int z = 0 ; z < CHUNK_SIZE;z++){
+                Blocks.chunk[x][y][z] = BlockType::SOLID;
             }
         }
     }
 }
 
-void World::emitFace(u_int8_t direction, i_vec3 coordinates) {
+void World::emitFace(u_int8_t direction, glm::ivec3 coordinates) {
     u_int32_t start = vertices.size();
     for(int i = 0; i < 4; i++) {
         Vertex v;
@@ -42,7 +42,7 @@ void World::emitFace(u_int8_t direction, i_vec3 coordinates) {
     indices.push_back(start + 0);
 }
 
-void World::emitGreedyFace(i_vec3 min_corner, direction dir, int height, int width) {
+void World::emitGreedyFace(glm::ivec3 min_corner, direction dir, int height, int width) {
     if (height <= 0 || width <= 0) return;
     GLuint start = static_cast<GLuint>(vertices.size());
 
@@ -177,20 +177,16 @@ void World::GreedyMesh_Generic(const FaceAxis& A) {
 }
 
 void World::generateMesh() {
-    setBlocks();
-    vertices.clear();
-    indices.clear();
-
     for (int fixed = 0; fixed < CHUNK_SIZE; ++fixed) {
         auto getBlock = [fixed , this](int a, int b, int) -> BlockType {
-            return Blocks[fixed][a][b];
+            return Blocks.chunk[fixed][a][b];
         };
         auto getNeighbor = [fixed , this](int a, int b, int) -> BlockType {
             int nx = fixed + 1;
-            if (nx < CHUNK_SIZE) return Blocks[nx][a][b];
+            if (nx < CHUNK_SIZE) return Blocks.chunk[nx][a][b];
             return BlockType::AIR;
         };
-        auto emitF = [fixed , this](i_vec3 pos, int h, int w) {
+        auto emitF = [fixed , this](glm::ivec3 pos, int h, int w) {
             emitGreedyFace({fixed, pos.x, pos.y}, direction::POSITIVE_X, h, w);
         };
         FaceAxis axis{getBlock, getNeighbor, emitF, CHUNK_SIZE, CHUNK_SIZE};
@@ -199,14 +195,14 @@ void World::generateMesh() {
 
     for (int fixed = 0; fixed < CHUNK_SIZE; ++fixed) {
         auto getBlock = [fixed , this](int a, int b, int) -> BlockType {
-            return Blocks[fixed][a][b];
+            return Blocks.chunk[fixed][a][b];
         };
         auto getNeighbor = [fixed , this](int a, int b, int) -> BlockType {
             int nx = fixed - 1;
-            if (nx >= 0) return Blocks[nx][a][b];
+            if (nx >= 0) return Blocks.chunk[nx][a][b];
             return BlockType::AIR;
         };
-        auto emitF = [fixed , this](i_vec3 pos, int h, int w) {
+        auto emitF = [fixed , this](glm::ivec3 pos, int h, int w) {
             emitGreedyFace({fixed, pos.x, pos.y}, direction::NEGATIVE_X, h, w);
         };
         FaceAxis axis{getBlock, getNeighbor, emitF, CHUNK_SIZE, CHUNK_SIZE};
@@ -215,14 +211,14 @@ void World::generateMesh() {
 
     for (int fixed = 0; fixed < CHUNK_SIZE; ++fixed) {
         auto getBlock = [fixed , this](int a, int b, int) -> BlockType {
-            return Blocks[a][fixed][b];
+            return Blocks.chunk[a][fixed][b];
         };
         auto getNeighbor = [fixed , this](int a, int b, int) -> BlockType {
             int ny = fixed + 1;
-            if (ny < CHUNK_SIZE) return Blocks[a][ny][b];
+            if (ny < CHUNK_SIZE) return Blocks.chunk[a][ny][b];
             return BlockType::AIR;
         };
-        auto emitF = [fixed , this](i_vec3 pos, int h, int w) {
+        auto emitF = [fixed , this](glm::ivec3 pos, int h, int w) {
             emitGreedyFace({pos.x, fixed, pos.y}, direction::POSITIVE_Y, h, w);
         };
         FaceAxis axis{getBlock, getNeighbor, emitF, CHUNK_SIZE, CHUNK_SIZE};
@@ -231,14 +227,14 @@ void World::generateMesh() {
 
     for (int fixed = 0; fixed < CHUNK_SIZE; ++fixed) {
         auto getBlock = [fixed , this](int a, int b, int) -> BlockType {
-            return Blocks[a][fixed][b];
+            return Blocks.chunk[a][fixed][b];
         };
         auto getNeighbor = [fixed , this](int a, int b, int) -> BlockType {
             int ny = fixed - 1;
-            if (ny >= 0) return Blocks[a][ny][b];
+            if (ny >= 0) return Blocks.chunk[a][ny][b];
             return BlockType::AIR;
         };
-        auto emitF = [fixed , this](i_vec3 pos, int h, int w) {
+        auto emitF = [fixed , this](glm::ivec3 pos, int h, int w) {
             emitGreedyFace({pos.x, fixed, pos.y}, direction::NEGATIVE_Y, h, w);
         };
         FaceAxis axis{getBlock, getNeighbor, emitF, CHUNK_SIZE, CHUNK_SIZE};
@@ -247,14 +243,14 @@ void World::generateMesh() {
 
     for (int fixed = 0; fixed < CHUNK_SIZE; ++fixed) {
         auto getBlock = [fixed , this](int a, int b, int) -> BlockType {
-            return Blocks[a][b][fixed];
+            return Blocks.chunk[a][b][fixed];
         };
         auto getNeighbor = [fixed , this](int a, int b, int) -> BlockType {
             int nz = fixed + 1;
-            if (nz < CHUNK_SIZE) return Blocks[a][b][nz];
+            if (nz < CHUNK_SIZE) return Blocks.chunk[a][b][nz];
             return BlockType::AIR;
         };
-        auto emitF = [fixed , this](i_vec3 pos, int h, int w) {
+        auto emitF = [fixed , this](glm::ivec3 pos, int h, int w) {
             emitGreedyFace({pos.x, pos.y, fixed}, direction::POSITIVE_Z, h, w);
         };
         FaceAxis axis{getBlock, getNeighbor, emitF, CHUNK_SIZE, CHUNK_SIZE};
@@ -263,14 +259,14 @@ void World::generateMesh() {
 
     for (int fixed = 0; fixed < CHUNK_SIZE; ++fixed) {
         auto getBlock = [fixed , this](int a, int b, int) -> BlockType {
-            return Blocks[a][b][fixed];
+            return Blocks.chunk[a][b][fixed];
         };
         auto getNeighbor = [fixed , this](int a, int b, int) -> BlockType {
             int nz = fixed - 1;
-            if (nz >= 0) return Blocks[a][b][nz];
+            if (nz >= 0) return Blocks.chunk[a][b][nz];
             return BlockType::AIR;
         };
-        auto emitF = [fixed , this](i_vec3 pos, int h, int w) {
+        auto emitF = [fixed , this](glm::ivec3 pos, int h, int w) {
             emitGreedyFace({pos.x, pos.y, fixed}, direction::NEGATIVE_Z, h, w);
         };
         FaceAxis axis{getBlock, getNeighbor, emitF, CHUNK_SIZE, CHUNK_SIZE};
@@ -286,4 +282,3 @@ std::vector<Vertex>& World::getVerticesRefrence(){
 std::vector<GLuint>& World::getIndicesRefrence(){
     return indices;
 }
-

@@ -13,6 +13,7 @@ public:
     void LinkFloatVbo(VBO& vbo, GLuint index, GLint components, GLsizei strideFloats, void* offset);
     void LinkIntVbo(VBO& vbo, GLuint index, GLint components, GLsizei strideFloats, void* offset);
 
+    void Refresh();
     void Bind();
     void Unbind();
     void Delete();

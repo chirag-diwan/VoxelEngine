@@ -3,6 +3,17 @@
 #include <GLFW/glfw3.h>
 #include "./EBO.h"
 
+EBO::EBO() : ID(0){
+
+}
+
+void EBO::Refresh(const void* data, size_t size, GLenum usage) {
+    glGenBuffers(1, &ID);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ID);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, size, data, usage);
+}
+
+
 
 EBO::EBO(GLuint* vertices , GLsizeiptr size , GLuint usage){
     glGenBuffers(1, &ID);
@@ -23,4 +34,3 @@ void EBO::Unbind(){
 void EBO::Delete(){
     glDeleteBuffers(1 , &ID);
 }
-

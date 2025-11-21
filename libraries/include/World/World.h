@@ -1,6 +1,8 @@
 #ifndef WORLD_H
 #define WORLD_H
 #include <glm/ext/vector_float3.hpp>
+#include <glm/ext/vector_int3.hpp>
+#include <map>
 #define CHUNK_SIZE 16
 #define WORLD_SIZE 1
 #include <vector>
@@ -11,6 +13,7 @@ using vec3 = glm::vec3;
 using i_vec3 = glm::ivec3;
 using u_int32_t = GLuint;  
 using u_int8_t = uint8_t;
+
 
 
 enum class BlockType {
@@ -35,12 +38,17 @@ struct FaceAxis {
     int sizeA, sizeB;
 };
 
+struct Chunk{
+    BlockType chunk[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE];
+};
+
 
 
 class World{
 
 private:
-    BlockType Blocks[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE];
+    Chunk Blocks;
+    std::map<glm::ivec3, bool> isGenerated;
     std::vector<Vertex> vertices;
     std::vector<GLuint> indices;
 
@@ -64,13 +72,14 @@ private:
 
 public:
 
-    void setBlocks();
+    void setBlocks(glm::ivec3 chunkStart);
     void emitFace(u_int8_t direction, i_vec3 coordinates) ;
     void emitGreedyFace(i_vec3 min_corner, direction dir, int height, int width) ;
     void GreedyMesh_Generic(const FaceAxis& A) ;
     void generateMesh();
+    void ChunkManager(glm::vec3& cameraPosition);
     std::vector<Vertex>& getVerticesRefrence();
     std::vector<GLuint>& getIndicesRefrence();
-
+    
 };
 #endif

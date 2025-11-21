@@ -19,8 +19,10 @@ public:
 
 public:
 
+    Shader();
     Shader(const char * vertexShader , const char * fragmentShader);
     void setViewMatrix(GLfloat* projectionMatrixDP , GLfloat* viewMatrixDP);
+    void Refresh(const char * vertexShader , const char * fragmentShader);
     void Activate();
     void Delete();
 };

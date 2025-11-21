@@ -9,8 +9,9 @@
 class EBO{
 public:
     GLuint ID;
+    EBO();
     EBO(GLuint* indices , GLsizeiptr size , GLuint usage);
-
+    void Refresh(const void* data, size_t size, GLenum usage) ;
     void Bind();
     void Unbind();
     void Delete();

@@ -16,10 +16,12 @@ struct Vertex{
 class VBO{
 public:
     GLuint ID;
+    VBO();
     VBO(GLfloat* vertices , GLsizeiptr size , GLuint usage);
     explicit VBO(GLint* vertices , GLsizeiptr size , GLuint usage);
     explicit VBO(Vertex* vertices , GLsizeiptr size , GLuint usage);
 
+    void Refresh(Vertex* vertices , GLsizeiptr size , GLuint usage);
     void Bind();
     void Unbind();
     void Delete();
