@@ -1,8 +1,13 @@
 #include "./Application.h"
+#include <iostream>
 
-Application::Application(){}
+Application::Application() : deltaTime(0.0f) {
 
-Application::~Application() { 
+    vertices.reserve(1000000);  
+    indices.reserve(1500000);
+}
+
+Application::~Application() {
     _ebo.Delete();
     _vbo.Delete();
     _vao.Delete();
@@ -11,17 +16,12 @@ Application::~Application() {
         glfwDestroyWindow(window);
         glfwTerminate();
     }
-    std::cout << 1.0/deltaTime;
-    std::cin.ignore();
+
 }
 
-void Application::GenerateWorld(){
-    world.setBlocks({0, 0, 0});
-    world.generateMesh();
-    vertices = world.getVerticesRefrence();  
-    indices = world.getIndicesRefrence();
+void Application::GenerateWorld() {
+    world.fetchMergedMesh(vertices, indices);
 }
-
 
 bool Application::Initialize() {
     if (!glfwInit()) {
@@ -42,12 +42,13 @@ bool Application::SetWindow() {
         return false;
     }
     glfwMakeContextCurrent(window);
-
+    glfwSwapInterval(1);  
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         std::cerr << "Failed to initialize GLAD\n";
         glfwDestroyWindow(window);
         window = nullptr;
         glfwTerminate();
+        return false;
     }
     return true;
 }
@@ -59,21 +60,22 @@ bool Application::SetBuffers() {
     }
     _vao.Refresh();
     _vao.Bind();
-    _vbo.Refresh(vertices.data(), vertices.size()*sizeof(Vertex), GL_DYNAMIC_DRAW);
-    _ebo.Refresh(indices.data() , indices.size()*sizeof(indices[0]) , GL_DYNAMIC_DRAW);
-    _vao.LinkIntVbo(_vbo, 0, 3, 6, (void*)0);     
-    _vao.LinkIntVbo(_vbo, 1, 3, 6, (void*)(3 * sizeof(int)));
+    _vbo.Refresh(vertices.data(), vertices.size() * sizeof(Vertex), GL_DYNAMIC_DRAW);
+    _ebo.Refresh(indices.data(), indices.size() * sizeof(GLuint), GL_DYNAMIC_DRAW);  
+
+
+
+    _vao.LinkIntVbo(_vbo, 0, 3, 6, (void*)0);  
+    _vao.LinkIntVbo(_vbo, 1, 3, 6, (void*)(3 * sizeof(float)));  
     _vbo.Unbind();
     _vao.Unbind();
-
     return true;
 }
 
-
 bool Application::SetShaders() {
     if (!window) return false;
-    shader.Refresh("shaders/default.vert", "shaders/default.frag");  
-    if (!shader.ID) {  
+    shader.Refresh("shaders/default.vert", "shaders/default.frag");
+    if (!shader.ID) {
         std::cerr << "Shader compilation failed\n";
         return false;
     }
@@ -84,12 +86,15 @@ bool Application::SetShaders() {
 bool Application::SetCamera() {
     camera.setProjection();
     camera.setView();
+
     shader.setViewMatrix(glm::value_ptr(camera.getProjection()), glm::value_ptr(camera.getView()));
     return true;
 }
 
 void Application::Run() {
     if (!window) return;
+
+
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
     glFrontFace(GL_CCW);
@@ -97,8 +102,15 @@ void Application::Run() {
     glDepthFunc(GL_LESS);
 
     InputHandler ih(window, &camera);
-    float lastTime = 0.0f;  
+    float lastTime = 0.0f;
     float currentTime = 0.0f;
+    glm::ivec3 lastCamChunk = glm::ivec3(999);
+    bool meshNeedsUpdate = true;  
+
+
+    world.ChunkManager(camera.CameraPos, renderDistance);
+    GenerateWorld();
+    SetBuffers();
 
     while (!glfwWindowShouldClose(window)) {
         currentTime = static_cast<float>(glfwGetTime());
@@ -108,6 +120,21 @@ void Application::Run() {
         glfwPollEvents();
         ih.processKeyPress(deltaTime);
 
+        glm::ivec3 currCamChunk = glm::floor(camera.CameraPos / static_cast<float>(CHUNK_SIZE));
+        if (currCamChunk != lastCamChunk) {
+            world.ChunkManager(camera.CameraPos, 5);
+            meshNeedsUpdate = true;  
+            lastCamChunk = currCamChunk;
+        }
+
+
+        if (meshNeedsUpdate) {
+            GenerateWorld();
+            SetBuffers();
+            meshNeedsUpdate = false;
+        }
+
+
         shader.setViewMatrix(glm::value_ptr(camera.getProjection()), glm::value_ptr(camera.getView()));
 
         glClearColor(0.85f, 0.85f, 0.95f, 1.0f);
@@ -115,7 +142,9 @@ void Application::Run() {
 
         glUseProgram(shader.ID);
         _vao.Bind();
-        glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
+        if (!indices.empty()) {
+            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
+        }
         _vao.Unbind();
 
         glfwSwapBuffers(window);

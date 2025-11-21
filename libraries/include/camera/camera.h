@@ -24,15 +24,15 @@ public:
     glm::vec3 target = {0,0,0};
     glm::vec3 up = {0,1,0};
     glm::vec3 CameraRight = {1,0,0};
-    glm::vec3 front = glm::vec3(0,0,-1) ;//this is camera direction
-    //glm::vec3 CameraRight = glm::normalize(glm::cross(up, CameraDirection));
-    glm::vec3 CameraUp = {0,1,0};//glm::normalize(glm::cross(CameraDirection , CameraRight));
+    glm::vec3 front = glm::vec3(0,0,-1) ;
+    
+    glm::vec3 CameraUp = {0,1,0};
 
 
     float fov = 45;
     float aspectRatio = 16.f/9.f;
     float nearPlane = 1.0f;
-    float farPlane = 100.0f;
+    float farPlane = 1000.0f;
 
     float yaw   = -90.0f;   
     float pitch = 0.0f;

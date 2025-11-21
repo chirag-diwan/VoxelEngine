@@ -1,36 +1,42 @@
+
 #ifndef WORLD_H
 #define WORLD_H
+
 #include <atomic>
-#include <condition_variable>
 #include <glm/ext/vector_float3.hpp>
 #include <glm/ext/vector_int3.hpp>
 #include <glm/ext/vector_float2.hpp>
 #include <glm/ext/scalar_constants.hpp>
-#include <mutex>
 #include <queue>
 #include <thread>
 #include <unordered_map>
+#include <map>
 #include <vector>
 #include <functional>
 #include <array>
-#include <algorithm>
-#include <cmath>
+
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtx/string_cast.hpp>
+
 #include "../glad/glad.h"
 #include "../VBO/VBO.h"
 #include "../PerlinNoise-3.0.0/PerlinNoise.hpp"
+
 #define CHUNK_SIZE 16
+#define WORLD_SIZE 1
+
 using vec3 = glm::vec3;
 using i_vec3 = glm::ivec3;
 using u_int32_t = GLuint;
 using u_int8_t = uint8_t;
+
 enum class BlockType {
-    NONE,
     SOLID,
-    AIR
+    AIR,
+    NONE
 };
+
 enum class direction {
     POSITIVE_X = 0,
     NEGATIVE_X,
@@ -46,9 +52,12 @@ struct FaceAxis {
     std::function<void(i_vec3, int, int)> emitFace;
     int sizeA, sizeB;
 };
+
 struct Chunk {
     BlockType chunk[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE];
 };
+
+
 namespace std {
     template <> struct hash<glm::ivec3> {
         size_t operator()(const glm::ivec3& v) const {
@@ -59,53 +68,53 @@ namespace std {
         }
     };
 }
+
 struct WorkResult{
     glm::ivec3 coord;
-    std::vector<Vertex> vertices;
-    std::vector<GLuint> indices;
+    Chunk chunk;
 };
+
 class World {
 private:
-    std::vector<Vertex> GlobalVertices;
-    std::vector<GLuint> GlobalIndices;
     std::unordered_map<glm::ivec3, Chunk> chunks;
-    std::unordered_map<glm::ivec3, WorkResult> generatedMeshes;
+    std::vector<Vertex> vertices;
+    std::vector<GLuint> indices;
     siv::PerlinNoise m_noise;
     std::vector<std::thread> workers;
     std::queue<glm::ivec3> ChunksToGenerate;
-    std::atomic<bool> running{true};
-    std::mutex workerMutex;
-    std::mutex resultMutex;
-    std::mutex ChunkMapMutex;
-    std::condition_variable cv;
+    std::queue<WorkResult> GeneratedChunks;
+    std::atomic<bool> running = true;
+
     static constexpr glm::vec3 facePos[6][4] = {
-        { {1,0,0}, {1,1,0}, {1,1,1}, {1,0,1} },
-        { {0,0,0}, {0,0,1}, {0,1,1}, {0,1,0} },
-        { {0,1,0}, {0,1,1}, {1,1,1}, {1,1,0} },
-        { {0,0,0}, {1,0,0}, {1,0,1}, {0,0,1} },
-        { {0,0,1}, {1,0,1}, {1,1,1}, {0,1,1} },
-        { {0,0,0}, {0,1,0}, {1,1,0}, {1,0,0} }
+        { {1,0,0}, {1,1,0}, {1,1,1}, {1,0,1} },  
+        { {0,0,0}, {0,0,1}, {0,1,1}, {0,1,0} },  
+        { {0,1,0}, {0,1,1}, {1,1,1}, {1,1,0} },  
+        { {0,0,0}, {1,0,0}, {1,0,1}, {0,0,1} },  
+        { {0,0,1}, {1,0,1}, {1,1,1}, {0,1,1} },  
+        { {0,0,0}, {0,1,0}, {1,1,0}, {1,0,0} }   
     };
+
     static constexpr glm::vec3 FaceNormal[6] = {
-        {1,0,0},
-        {-1,0,0},
-        {0,1,0},
-        {0,-1,0},
-        {0,0,1},
-        {0,0,-1}
+        {1,0,0},   
+        {-1,0,0},  
+        {0,1,0},   
+        {0,-1,0},  
+        {0,0,1},   
+        {0,0,-1}   
     };
+
 public:
     World();
-    ~World();
-    void setBlocks(glm::ivec3 chunkCoord , Chunk& currentChunk);
-    void emitFace(direction dir, i_vec3 localCoordinates, i_vec3 globalOffset, std::vector<Vertex>& vertices, std::vector<GLuint>& indices);
-    void emitGreedyFace(i_vec3 localMinCorner, direction dir, int height, int width, i_vec3 globalOffset, std::vector<Vertex>& vertices , std::vector<GLuint>& indices);
+
+    void setBlocks(glm::ivec3 chunkCoord);
+    void emitFace(u_int8_t direction, i_vec3 localCoordinates, i_vec3 globalOffset = i_vec3(0));
+    void emitGreedyFace(i_vec3 localMinCorner, direction dir, int height, int width, i_vec3 globalOffset = i_vec3(0));
     void GreedyMesh_Generic(const FaceAxis& A);
-    void generateChunkMesh(glm::ivec3 chunkCoord , Chunk& currentChunk, std::vector<Vertex>& vertices , std::vector<GLuint>& indices) ;
+    void generateChunkMesh(glm::ivec3 chunkCoord);
+    void buildGlobalMesh();
     void ChunkManager(glm::vec3& cameraPosition, int renderRadius = 5);
-    void MergeChunks();
-    void fetchMergedMesh(std::vector<Vertex>& outVertices, std::vector<GLuint>& outIndices);
-    std::vector<Vertex>& getVerticesReference();
-    std::vector<GLuint>& getIndicesReference();
+    std::vector<Vertex>& getVerticesRefrence();
+    std::vector<GLuint>& getIndicesRefrence();
 };
+
 #endif

@@ -32,6 +32,9 @@ private:
     VBO _vbo;
     EBO _ebo;
     float deltaTime;
+    int renderDistance = 10;
+    float Gravity = 1;
+
 
 public:
     Application() ;
