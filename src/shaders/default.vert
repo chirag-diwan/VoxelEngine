@@ -7,14 +7,17 @@ layout (location = 2) in vec3 aSkyBoxVert;
 uniform mat4 ViewMatrix;
 uniform mat4 ProjectionMatrix;
 uniform int isSkyBox;  
+uniform vec3 aSunNormal;
 
 out vec3 TexCoords;
 out vec3 Normal;
 flat out int passSkyBox;
+out vec3 SunNormal;
 
 void main() {
+    SunNormal = aSunNormal;
     passSkyBox = isSkyBox;
-    
+
     if (isSkyBox == 1) {
         TexCoords = aSkyBoxVert;
         mat4 viewNoTrans = mat4(mat3(ViewMatrix));  

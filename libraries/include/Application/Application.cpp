@@ -1,4 +1,7 @@
 #include "./Application.h"
+#include <GLFW/glfw3.h>
+#include <glm/ext/vector_float3.hpp>
+#include <glm/trigonometric.hpp>
 #include <iostream>
 
 Application::Application() : deltaTime(0.0f) {
@@ -76,8 +79,8 @@ bool Application::SetCamera() {
 
 
 void Application::GenerateWorld() {
-    vertices.clear();  // Add: Ensure no accumulation
-    indices.clear();   // Add: Ensure no accumulation
+    vertices.clear();  
+    indices.clear();   
     world.fetchMergedMesh(vertices, indices);
 }
 
@@ -87,7 +90,7 @@ bool Application::SetBuffers() {
         return false;
     }
 
-    // World VAO setup (ints → LinkIntVbo)
+    
     if (_vao.ID != 0) _vao.Delete();
     _vao.Refresh();
     _vao.Bind();
@@ -97,23 +100,23 @@ bool Application::SetBuffers() {
     _vbo.Refresh(vertices.data(), vertices.size() * sizeof(Vertex), GL_DYNAMIC_DRAW);
     _ebo.Refresh(indices.data(), indices.size() * sizeof(GLuint), GL_DYNAMIC_DRAW);
 
-    _vao.LinkIntVbo(_vbo, 0, 3, 6, (void*)0);                       // Pos: attr 0 (ivec3)
-    _vao.LinkIntVbo(_vbo, 1, 3, 6, (void*)(3 * sizeof(int)));       // Normal: attr 1 (ivec3)
+    _vao.LinkIntVbo(_vbo, 0, 3, 6, (void*)0);                       
+    _vao.LinkIntVbo(_vbo, 1, 3, 6, (void*)(3 * sizeof(int)));       
 
     _vbo.Unbind();
     _vao.Unbind();
 
-    // Sky VAO setup (floats → LinkFloatVbo at attr 2)
+    
     if (_skyVao.ID != 0) _skyVao.Delete();
     _skyVao.Refresh();
     _skyVao.Bind();
 
     if (_skyVbo.ID != 0) _skyVbo.Delete();
-    _skyVbo.Refresh((GLfloat*)skyVerts, sizeof(skyVerts), GL_DYNAMIC_DRAW);  // Cast explicit for safety
+    _skyVbo.Refresh((GLfloat*)skyVerts, sizeof(skyVerts), GL_DYNAMIC_DRAW);  
 
-    _skyVao.LinkFloatVbo(_skyVbo, 2, 3, 3, (void*)0);  // Fix: Float link at location 2 (vec3 for sky pos)
+    _skyVao.LinkFloatVbo(_skyVbo, 2, 3, 3, (void*)0);  
 
-    // Optional: Explicitly disable unused attrs for sky (0/1)
+    
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
 
@@ -142,6 +145,10 @@ void Application::Run() {
     GenerateWorld();
     SetBuffers();
 
+    auto skyBoxLoc = glGetUniformLocation(shader.ID, "skybox");
+    auto isSkyBoxLoc = glGetUniformLocation(shader.ID, "isSkyBox");
+    auto sunNormalLoc = glGetUniformLocation(shader.ID , "aSunNormal");
+
     while (!glfwWindowShouldClose(window)) {
         currentTime = static_cast<float>(glfwGetTime());
         deltaTime = currentTime - lastTime;
@@ -163,27 +170,28 @@ void Application::Run() {
             meshNeedsUpdate = false;
         }
 
-        // Clear setup
-        glClearColor(0.1f, 0.2f, 0.3f, 1.0f);  // Fix: Set color in loop (dark blue for debug; change to sky-ish if wanted)
+        
+        glClearColor(0.1f, 0.2f, 0.3f, 1.0f);  
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glUseProgram(shader.ID);  // Activate first
+        glUseProgram(shader.ID);  
 
-        // Fix: Matrices after useProgram
+        
         shader.setViewMatrix(glm::value_ptr(camera.getProjection()), glm::value_ptr(camera.getView()));
 
-        // Skybox render
+        
         glDepthFunc(GL_LEQUAL);
-        glUniform1i(glGetUniformLocation(shader.ID, "skybox"), 0);
+        glUniform1i(skyBoxLoc, 0);
         glActiveTexture(GL_TEXTURE0);
-        glUniform1i(glGetUniformLocation(shader.ID, "isSkyBox"), 1);
+        glUniform1i(isSkyBoxLoc, 1);
+        glUniform3f(sunNormalLoc , glm::sin(lastTime*0.1) , glm::cos(lastTime*0.1) , 0);
         skyCubeMap.Bind();
         _skyVao.Bind();
         glDrawArrays(GL_TRIANGLES, 0, 36);
         _skyVao.Unbind();
-        glUniform1i(glGetUniformLocation(shader.ID, "isSkyBox"), 0);  // Uncomment/reset
+        glUniform1i(isSkyBoxLoc, 0);  
 
-        // World render
+        
         glDepthFunc(GL_LEQUAL);
         _vao.Bind();
         if (!indices.empty()) {

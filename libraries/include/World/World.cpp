@@ -60,7 +60,7 @@ void World::setBlocks(glm::ivec3 chunkCoord, Chunk& currentChunk) {
     constexpr int octaves = 8;
     constexpr float persistence = 0.8f;
     constexpr float baseHeight = 32.0f;
-    constexpr float heightAmp = 200.0f;
+    constexpr float heightAmp = 400.0f;
 
 
     for (int lx = 0; lx < CHUNK_SIZE; ++lx) {
