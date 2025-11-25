@@ -22,6 +22,10 @@ public:
     explicit VBO(Vertex* vertices , GLsizeiptr size , GLuint usage);
 
     void Refresh(Vertex* vertices , GLsizeiptr size , GLuint usage);
+    void Refresh(GLint const * vertices , GLsizeiptr size , GLuint usage);
+    void Refresh(GLfloat const * vertices , GLsizeiptr size , GLuint usage);
+
+
     void Bind();
     void Unbind();
     void Delete();

@@ -7,11 +7,29 @@
 VBO::VBO() : ID(0){
 }
 
-void VBO::Refresh(Vertex* vertices , GLsizeiptr size , GLuint usage){
+void VBO::Refresh(Vertex* vertices, GLsizeiptr size, GLuint usage) {
+    if (ID != 0) Delete();  // Add: Auto-delete old
     glGenBuffers(1, &ID);
     glBindBuffer(GL_ARRAY_BUFFER, ID);
     glBufferData(GL_ARRAY_BUFFER, size, vertices, usage);
 }
+
+void VBO::Refresh(GLint const * vertices, GLsizeiptr size, GLuint usage) {
+    if (ID != 0) Delete();  // Add: Auto-delete old
+    glGenBuffers(1, &ID);
+    glBindBuffer(GL_ARRAY_BUFFER, ID);
+    glBufferData(GL_ARRAY_BUFFER, size, vertices, usage);
+}
+
+
+void VBO::Refresh(GLfloat const * vertices, GLsizeiptr size, GLuint usage) {
+    if (ID != 0) Delete();  // Add: Auto-delete old
+    glGenBuffers(1, &ID);
+    glBindBuffer(GL_ARRAY_BUFFER, ID);
+    glBufferData(GL_ARRAY_BUFFER, size, vertices, usage);
+}
+
+// Apply similar to GLfloat overload if used elsewhere
 
 VBO::VBO(GLfloat* vertices , GLsizeiptr size , GLuint usage){
     glGenBuffers(1, &ID);

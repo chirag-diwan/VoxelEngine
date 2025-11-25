@@ -8,24 +8,29 @@
 #include "../glad/glad.h"
 
 
-std::string getFileContent(const char * filepath){
+std::string getFileContent(const char * filepath)
+{
     std::ifstream file(filepath);
-    if(file.fail()){
+    if(file.fail())
+    {
         std::cerr << "Error Opening file :: " << filepath;
         std::exit(EXIT_FAILURE);
     }
     std::string line;
     std::string fileContent;
-    while(std::getline(file , line)){
+    while(std::getline(file , line))
+    {
         fileContent += line + "\n";
     }
     return fileContent;
 }
 
 
-Shader::Shader(){}
+Shader::Shader()
+{}
 
-Shader::Shader(const char * vertexShader , const char * fragmentShader){
+Shader::Shader(const char * vertexShader , const char * fragmentShader)
+{
     std::string buffer = getFileContent(vertexShader);
     const char * vertexShaderContent = buffer.c_str();
     std::string buffer2 = getFileContent(fragmentShader);
@@ -44,13 +49,15 @@ Shader::Shader(const char * vertexShader , const char * fragmentShader){
 
     GLint success;
     glGetShaderiv(VertexShader, GL_COMPILE_STATUS, &success);
-    if (!success) {
+    if (!success) 
+    {
         char infoLog[512];
         glGetShaderInfoLog(VertexShader, 512, NULL, infoLog);
         std::cerr << "Vertex Shader compilation failed: " << infoLog << std::endl;
     }
     glGetShaderiv(FragmentShader, GL_COMPILE_STATUS, &success);
-    if (!success) {
+    if (!success) 
+    {
         char infoLog[512];
         glGetShaderInfoLog(FragmentShader, 512, NULL, infoLog);
         std::cerr << "Fragment Shader compilation failed: " << infoLog << std::endl;
@@ -63,7 +70,8 @@ Shader::Shader(const char * vertexShader , const char * fragmentShader){
     glLinkProgram(ID);
 
     glGetProgramiv(ID, GL_LINK_STATUS, &success);
-    if (!success) {
+    if (!success) 
+    {
         char infoLog[512];
         glGetProgramInfoLog(ID, 512, NULL, infoLog);
         std::cerr << "Shader linking failed: " << infoLog << std::endl;
@@ -73,7 +81,8 @@ Shader::Shader(const char * vertexShader , const char * fragmentShader){
     glDeleteShader(FragmentShader);
 }
 
-void Shader::Refresh(const char * vertexShader , const char * fragmentShader){
+void Shader::Refresh(const char * vertexShader , const char * fragmentShader)
+{
     std::string buffer = getFileContent(vertexShader);
     const char * vertexShaderContent = buffer.c_str();
     std::string buffer2 = getFileContent(fragmentShader);
@@ -92,13 +101,15 @@ void Shader::Refresh(const char * vertexShader , const char * fragmentShader){
 
     GLint success;
     glGetShaderiv(VertexShader, GL_COMPILE_STATUS, &success);
-    if (!success) {
+    if (!success) 
+    {
         char infoLog[512];
         glGetShaderInfoLog(VertexShader, 512, NULL, infoLog);
         std::cerr << "Vertex Shader compilation failed: " << infoLog << std::endl;
     }
     glGetShaderiv(FragmentShader, GL_COMPILE_STATUS, &success);
-    if (!success) {
+    if (!success) 
+    {
         char infoLog[512];
         glGetShaderInfoLog(FragmentShader, 512, NULL, infoLog);
         std::cerr << "Fragment Shader compilation failed: " << infoLog << std::endl;
@@ -111,7 +122,8 @@ void Shader::Refresh(const char * vertexShader , const char * fragmentShader){
     glLinkProgram(ID);
 
     glGetProgramiv(ID, GL_LINK_STATUS, &success);
-    if (!success) {
+    if (!success) 
+    {
         char infoLog[512];
         glGetProgramInfoLog(ID, 512, NULL, infoLog);
         std::cerr << "Shader linking failed: " << infoLog << std::endl;
@@ -124,14 +136,17 @@ void Shader::Refresh(const char * vertexShader , const char * fragmentShader){
 
 
 
-void Shader::setViewMatrix(GLfloat* projectionMatrixDP , GLfloat* viewMatrixDP){
+void Shader::setViewMatrix(GLfloat* projectionMatrixDP , GLfloat* viewMatrixDP)
+{
     GLint ViewLocation = glGetUniformLocation(ID , "ViewMatrix");
     GLint ProjectionLocation = glGetUniformLocation(ID , "ProjectionMatrix");
-    if(ViewLocation == -1){
+    if(ViewLocation == -1)
+    {
         std::cerr << "No Such uniform as ViewMatrix";
         std::exit(EXIT_FAILURE);
     }
-    if(ProjectionLocation == -1){
+    if(ProjectionLocation == -1)
+    {
         std::cerr << "No Such uniform as ViewMatrix";
         std::exit(EXIT_FAILURE);
     }
@@ -140,13 +155,24 @@ void Shader::setViewMatrix(GLfloat* projectionMatrixDP , GLfloat* viewMatrixDP){
 
 }
 
+void Shader::setTextureCubeMap()
+{
+    GLint TextureLocation = glGetUniformLocation(ID , "CubeMapTexture");
+    if(TextureLocation == -1)
+    {
+        std::cerr << "No Such Uniform as CubeMapTexture";
+    }
+}
 
-void Shader::Activate(){
+
+void Shader::Activate()
+{
     glUseProgram(ID);
 }
 
 
-void Shader::Delete(){
+void Shader::Delete()
+{
     glDeleteProgram(ID);
 }
 

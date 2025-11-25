@@ -19,22 +19,73 @@
 #include "../camera/camera.h"
 #include "../World/World.h"
 #include "../InputHandler/InputHandler.h"
+#include "../Texture/Texture.h"
+
 
 class Application {
 private:
     GLFWwindow* window = nullptr;
     std::vector<Vertex> vertices;
     std::vector<GLuint> indices;  
+    Texture skyCubeMap;
     Camera camera;
     Shader shader;
     World world;
     VAO _vao;
     VBO _vbo;
     EBO _ebo;
+    VBO _skyVbo;
+    VAO _skyVao;
     float deltaTime;
     int renderDistance = 10;
     float Gravity = 1;
-
+    static constexpr GLfloat skyVerts[] = {
+        // Scale factor: 500.0f (tune: match your projection far plane / 2)
+        -500,  500, -500,
+        -500, -500, -500,
+        500, -500, -500,
+        500, -500, -500,
+        500,  500, -500,
+        -500,  500, -500,
+        -500, -500,  500,
+        -500, -500, -500,
+        -500,  500, -500,
+        -500,  500, -500,
+        -500,  500,  500,
+        -500, -500,  500,
+        500, -500, -500,
+        500, -500,  500,
+        500,  500,  500,
+        500,  500,  500,
+        500,  500, -500,
+        500, -500, -500,
+        -500, -500,  500,
+        -500,  500,  500,
+        500,  500,  500,
+        500,  500,  500,
+        500, -500,  500,
+        -500, -500,  500,
+        -500,  500, -500,
+        500,  500, -500,
+        500,  500,  500,
+        500,  500,  500,
+        -500,  500,  500,
+        -500,  500, -500,
+        -500, -500, -500,
+        -500, -500,  500,
+        500, -500, -500,
+        500, -500, -500,
+        -500, -500,  500,
+        500, -500,  500
+    };
+    static constexpr const char * CubeMapPath[] = {
+        "CubeMap/right.png",
+        "CubeMap/left.png",
+        "CubeMap/top.png",
+        "CubeMap/bottom.png",
+        "CubeMap/front.png",
+        "CubeMap/back.png",
+    };
 
 public:
     Application() ;
@@ -43,6 +94,8 @@ public:
     bool Initialize() ;
     bool SetWindow() ;
     bool SetBuffers() ;
+    void SetTexture() ;
+    void setCubeMap();
     bool SetShaders() ;
     bool SetCamera() ;
     void Run() ;
