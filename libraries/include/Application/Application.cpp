@@ -5,7 +5,6 @@
 #include <iostream>
 
 Application::Application() : deltaTime(0.0f) {
-
     vertices.reserve(10000000);  
     indices.reserve(15000000);
 }
@@ -79,8 +78,6 @@ bool Application::SetCamera() {
 
 
 void Application::GenerateWorld() {
-    vertices.clear();  
-    indices.clear();   
     world.fetchMergedMesh(vertices, indices);
 }
 
@@ -90,7 +87,7 @@ bool Application::SetBuffers() {
         return false;
     }
 
-    
+
     if (_vao.ID != 0) _vao.Delete();
     _vao.Refresh();
     _vao.Bind();
@@ -106,7 +103,7 @@ bool Application::SetBuffers() {
     _vbo.Unbind();
     _vao.Unbind();
 
-    
+
     if (_skyVao.ID != 0) _skyVao.Delete();
     _skyVao.Refresh();
     _skyVao.Bind();
@@ -116,7 +113,7 @@ bool Application::SetBuffers() {
 
     _skyVao.LinkFloatVbo(_skyVbo, 2, 3, 3, (void*)0);  
 
-    
+
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
 
@@ -148,14 +145,22 @@ void Application::Run() {
     auto skyBoxLoc = glGetUniformLocation(shader.ID, "skybox");
     auto isSkyBoxLoc = glGetUniformLocation(shader.ID, "isSkyBox");
     auto sunNormalLoc = glGetUniformLocation(shader.ID , "aSunNormal");
+    auto LightViewLoc = glGetUniformLocation(shader.ID , "aLightView");
+    auto LightProjection = glGetUniformLocation(shader.ID , "aLightProjection");
+    auto LightPassLoc = glGetUniformLocation(shader.ID , "isLightPass");
 
+    globalLight.UpdatePosition(0);
+    glm::vec3 lightPosition;
     while (!glfwWindowShouldClose(window)) {
         currentTime = static_cast<float>(glfwGetTime());
         deltaTime = currentTime - lastTime;
         lastTime = currentTime;
-
+        globalLight.UpdatePosition(lastTime);
+        lightPosition = globalLight.GetPosition();
         glfwPollEvents();
         ih.processKeyPress(deltaTime);
+        //globalLight.SetView();
+        //globalLight.SetProjection();
 
         glm::ivec3 currCamChunk = glm::floor(camera.CameraPos / static_cast<float>(CHUNK_SIZE));
         if (currCamChunk != lastCamChunk) {
@@ -170,28 +175,28 @@ void Application::Run() {
             meshNeedsUpdate = false;
         }
 
-        
+
         glClearColor(0.1f, 0.2f, 0.3f, 1.0f);  
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glUseProgram(shader.ID);  
 
-        
+
         shader.setViewMatrix(glm::value_ptr(camera.getProjection()), glm::value_ptr(camera.getView()));
 
-        
+
         glDepthFunc(GL_LEQUAL);
         glUniform1i(skyBoxLoc, 0);
         glActiveTexture(GL_TEXTURE0);
         glUniform1i(isSkyBoxLoc, 1);
-        glUniform3f(sunNormalLoc , glm::sin(lastTime*0.1) , glm::cos(lastTime*0.1) , 0);
+        glUniform3f(sunNormalLoc,lightPosition.x , lightPosition.y , lightPosition.z);
         skyCubeMap.Bind();
         _skyVao.Bind();
         glDrawArrays(GL_TRIANGLES, 0, 36);
         _skyVao.Unbind();
         glUniform1i(isSkyBoxLoc, 0);  
 
-        
+
         glDepthFunc(GL_LEQUAL);
         _vao.Bind();
         if (!indices.empty()) {

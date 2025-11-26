@@ -13,6 +13,7 @@ public:
     void Unbind();
     void LinkCubeMap(const char * const filePaths[], size_t size);
     void warpAndFilter();
+    void Generate2DDepthMap(unsigned int height , unsigned int width);
 };
 
 

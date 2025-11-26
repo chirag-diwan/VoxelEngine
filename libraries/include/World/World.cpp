@@ -6,6 +6,7 @@
 #include <cmath>
 
 World::World() : m_noise(12345u), running(true) {
+    heightCache.reserve(10000);  
     unsigned num_threads = std::thread::hardware_concurrency();
     if (num_threads > 0) {
         num_threads--;
@@ -14,6 +15,8 @@ World::World() : m_noise(12345u), running(true) {
         workers.emplace_back([this]() {
             std::vector<Vertex> vertices;
             std::vector<GLuint> indices;
+            vertices.reserve(16384);  
+            indices.reserve(24576);   
             while (running) {
                 glm::ivec3 ChunkCoord;
                 {
@@ -24,6 +27,7 @@ World::World() : m_noise(12345u), running(true) {
                     ChunksToGenerate.pop();
                 }
                 Chunk chunk;
+                chunk.initToAir();
                 setBlocks(ChunkCoord, chunk);
                 generateChunkMesh(ChunkCoord, chunk, vertices, indices);
                 {
@@ -57,23 +61,34 @@ void World::MergeChunks() {
 
 void World::setBlocks(glm::ivec3 chunkCoord, Chunk& currentChunk) {
     constexpr float scale = 0.00008f;
-    constexpr int octaves = 8;
+    constexpr int octaves = 7;
     constexpr float persistence = 0.8f;
     constexpr float baseHeight = 32.0f;
     constexpr float heightAmp = 400.0f;
-
-
     for (int lx = 0; lx < CHUNK_SIZE; ++lx) {
         for (int lz = 0; lz < CHUNK_SIZE; ++lz) {
-            float globalX = static_cast<float>(chunkCoord.x * CHUNK_SIZE + lx);
-            float globalZ = static_cast<float>(chunkCoord.z * CHUNK_SIZE + lz);
-            float rawNoise = m_noise.octave2D(globalX * scale, globalZ * scale, octaves, persistence);
-            float noiseVal = (rawNoise + 1.0f) / 2.0f;
-            float terrainHeightFloat = baseHeight + (noiseVal - 0.5f) * heightAmp * 2.0f;
-            int terrainHeight = static_cast<int>(std::floor(terrainHeightFloat));
+            int globalX = chunkCoord.x * CHUNK_SIZE + lx;
+            int globalZ = chunkCoord.z * CHUNK_SIZE + lz;
+            glm::ivec2 key(globalX, globalZ);  
+            int terrainHeight;
+            {
+                std::unique_lock<std::mutex> lock(heightCacheMutex);  
+                auto it = heightCache.find(key);
+                if (it == heightCache.end()) {
+                    float globalXf = static_cast<float>(globalX);
+                    float globalZf = static_cast<float>(globalZ);
+                    float rawNoise = m_noise.octave2D(globalXf * scale, globalZf * scale, octaves, persistence);
+                    float noiseVal = (rawNoise + 1.0f) / 2.0f;
+                    float terrainHeightFloat = baseHeight + (noiseVal - 0.5f) * heightAmp * 2.0f;
+                    terrainHeight = static_cast<int>(std::floor(terrainHeightFloat));
+                    heightCache[key] = terrainHeight;  
+                } else {
+                    terrainHeight = it->second;
+                }
+            }
             for (int ly = 0; ly < CHUNK_SIZE; ++ly) {
                 int globalY = chunkCoord.y * CHUNK_SIZE + ly;
-                currentChunk.chunk[lx][ly][lz] = (globalY < terrainHeight) ? BlockType::SOLID : BlockType::AIR;
+                currentChunk.get(lx, ly, lz) = (globalY < terrainHeight) ? BlockType::SOLID : BlockType::AIR;
             }
         }
     }
@@ -184,29 +199,55 @@ void World::emitGreedyFace(glm::ivec3 localMinCorner, direction dir, int height,
     }
 }
 
-void World::GreedyMesh_Generic(const FaceAxis& A) {
-    BlockType mask[CHUNK_SIZE][CHUNK_SIZE];
-    std::fill_n(reinterpret_cast<BlockType*>(mask), CHUNK_SIZE * CHUNK_SIZE, BlockType::NONE);
-    for (int a = 0; a < A.sizeA; ++a) {
-        for (int b = 0; b < A.sizeB; ++b) {
-            BlockType current = A.getBlock(a, b, 0);
-            BlockType neighbor = A.getNeighbor(a, b, 0);
-            mask[a][b] = (current != BlockType::AIR && neighbor == BlockType::AIR)
-                ? current
-                : BlockType::NONE;
+
+void World::greedyMeshSlice(const Chunk& current, const Chunk* neighbor, int fixed, direction dir, int localNeighCoord, i_vec3 globalOffset, std::vector<Vertex>& vertices, std::vector<GLuint>& indices) {
+    bool mask[CHUNK_SIZE][CHUNK_SIZE];  
+    std::fill_n(reinterpret_cast<bool*>(mask), CHUNK_SIZE * CHUNK_SIZE, false);
+    int sizeA, sizeB, blockX, blockY, blockZ, neighX, neighY, neighZ;
+    int axis = static_cast<int>(dir) / 2;
+    bool isPos = (static_cast<int>(dir) % 2 == 0);
+    if (axis == 0) {  
+        sizeA = CHUNK_SIZE; sizeB = CHUNK_SIZE;  
+        blockX = fixed; blockY = 0; blockZ = 0;
+        neighX = isPos ? localNeighCoord : localNeighCoord; neighY = 0; neighZ = 0;
+    } else if (axis == 1) {  
+        sizeA = CHUNK_SIZE; sizeB = CHUNK_SIZE;  
+        blockX = 0; blockY = fixed; blockZ = 0;
+        neighX = 0; neighY = isPos ? localNeighCoord : localNeighCoord; neighZ = 0;
+    } else {  
+        sizeA = CHUNK_SIZE; sizeB = CHUNK_SIZE;  
+        blockX = 0; blockY = 0; blockZ = fixed;
+        neighX = 0; neighY = 0; neighZ = isPos ? localNeighCoord : localNeighCoord;
+    }
+    
+    for (int a = 0; a < sizeA; ++a) {
+        for (int b = 0; b < sizeB; ++b) {
+            int lx = (axis == 0) ? fixed : ((axis == 1) ? a : a);
+            int ly = (axis == 1) ? fixed : ((axis == 2) ? b : a);
+            int lz = (axis == 2) ? fixed : ((axis == 0) ? b : b);
+            BlockType currentBlock = current.get(lx, ly, lz);
+            BlockType neighBlock;
+            if (neighbor) {
+                neighBlock = neighbor->get(neighX + (axis==0 ? 0 : (axis==1 ? a : a)),  
+                                          neighY + (axis==1 ? 0 : (axis==2 ? b : a)),
+                                          neighZ + (axis==2 ? 0 : (axis==0 ? b : b)));
+            } else {
+                neighBlock = BlockType::AIR;
+            }
+            mask[a][b] = (currentBlock == BlockType::SOLID && neighBlock == BlockType::AIR);  
         }
     }
-    for (int a = 0; a < A.sizeA; ++a) {
-        for (int b = 0; b < A.sizeB; ) {
-            if (mask[a][b] == BlockType::NONE) { ++b; continue; }
-            BlockType type = mask[a][b];
+    
+    for (int a = 0; a < sizeA; ++a) {
+        for (int b = 0; b < sizeB; ) {
+            if (!mask[a][b]) { ++b; continue; }
             int w = 1;
-            while (b + w < A.sizeB && mask[a][b + w] == type) ++w;
+            while (b + w < sizeB && mask[a][b + w]) ++w;
             int h = 1;
-            while (a + h < A.sizeA) {
+            while (a + h < sizeA) {
                 bool ok = true;
                 for (int bb = 0; bb < w; ++bb) {
-                    if (mask[a + h][b + bb] != type) {
+                    if (!mask[a + h][b + bb]) {
                         ok = false;
                         break;
                     }
@@ -214,10 +255,15 @@ void World::GreedyMesh_Generic(const FaceAxis& A) {
                 if (!ok) break;
                 ++h;
             }
-            A.emitFace({a, b, 0}, h, w);
+            
+            i_vec3 pos;
+            if (axis == 0) pos = {fixed, a, b};
+            else if (axis == 1) pos = {a, fixed, b};
+            else pos = {a, b, fixed};
+            emitGreedyFace(pos, dir, h, w, globalOffset, vertices, indices);
             for (int aa = 0; aa < h; ++aa) {
                 for (int bb = 0; bb < w; ++bb) {
-                    mask[a + aa][b + bb] = BlockType::NONE;
+                    mask[a + aa][b + bb] = false;
                 }
             }
             b += w;
@@ -225,214 +271,83 @@ void World::GreedyMesh_Generic(const FaceAxis& A) {
     }
 }
 
+
 void World::generateChunkMesh(glm::ivec3 chunkCoord, Chunk& currentChunk, std::vector<Vertex>& vertices, std::vector<GLuint>& indices) {
     {
         std::unique_lock<std::mutex> lock(ChunkMapMutex);
         if (chunks.find(chunkCoord) == chunks.end()) return;
     }
     glm::ivec3 globalOffset = chunkCoord * glm::ivec3(CHUNK_SIZE);
-    auto getLocalBlock = [&](int lx, int ly, int lz) -> BlockType {
-        if (lx < 0 || lx >= CHUNK_SIZE || ly < 0 || ly >= CHUNK_SIZE || lz < 0 || lz >= CHUNK_SIZE) {
-            return BlockType::AIR;
+
+    
+    std::array<const Chunk*, 6> neighborChunks{};
+    {
+        std::unique_lock<std::mutex> lock(ChunkMapMutex);
+        for (int d = 0; d < 6; ++d) {
+            int axis = d / 2;
+            int delta = (d % 2 == 0) ? 1 : -1;
+            glm::ivec3 neighC = chunkCoord;
+            neighC[axis] += delta;
+            auto it = chunks.find(neighC);
+            if (it != chunks.end()) {
+                neighborChunks[d] = &it->second;
+            }
         }
-        return currentChunk.chunk[lx][ly][lz];
-    };
-    // POSITIVE_X
+    }
+
+    
+    
     {
         direction dir = direction::POSITIVE_X;
-        int axis = 0;
+        const Chunk* neigh = neighborChunks[0];
+        int localN = 0;
         for (int fixed = 0; fixed < CHUNK_SIZE; ++fixed) {
-            auto getBlock = [&](int a, int b, int) -> BlockType {
-                return getLocalBlock(fixed, a, b);
-            };
-            auto getNeighbor = [&](int a, int b, int) -> BlockType {
-                int nx = fixed + 1;
-                if (nx >= 0 && nx < CHUNK_SIZE) {
-                    return getLocalBlock(nx, a, b);
-                } else {
-                    glm::ivec3 neighC = chunkCoord;
-                    neighC[axis] += (nx >= CHUNK_SIZE ? 1 : -1);
-                    int local_nx = (nx >= CHUNK_SIZE ? 0 : CHUNK_SIZE - 1);
-                    {
-                        std::unique_lock<std::mutex> lock(ChunkMapMutex);
-                        auto it = chunks.find(neighC);
-                        if (it != chunks.end()) {
-                            return it->second.chunk[local_nx][a][b];
-                        }
-                    }
-                    return BlockType::AIR;
-                }
-            };
-            auto emitF = [&](glm::ivec3 pos, int h, int w) {
-                emitGreedyFace({fixed, pos.x, pos.y}, dir, h, w, globalOffset, vertices, indices);
-            };
-            FaceAxis axisObj{getBlock, getNeighbor, emitF, CHUNK_SIZE, CHUNK_SIZE};
-            GreedyMesh_Generic(axisObj);
+            greedyMeshSlice(currentChunk, neigh, fixed, dir, localN, globalOffset, vertices, indices);
         }
     }
-    // NEGATIVE_X
+    
     {
         direction dir = direction::NEGATIVE_X;
-        int axis = 0;
+        const Chunk* neigh = neighborChunks[1];
+        int localN = CHUNK_SIZE - 1;
         for (int fixed = 0; fixed < CHUNK_SIZE; ++fixed) {
-            auto getBlock = [&](int a, int b, int) -> BlockType {
-                return getLocalBlock(fixed, a, b);
-            };
-            auto getNeighbor = [&](int a, int b, int) -> BlockType {
-                int nx = fixed - 1;
-                if (nx >= 0 && nx < CHUNK_SIZE) {
-                    return getLocalBlock(nx, a, b);
-                } else {
-                    glm::ivec3 neighC = chunkCoord;
-                    neighC[axis] += (nx < 0 ? -1 : 1);
-                    int local_nx = (nx < 0 ? CHUNK_SIZE - 1 : 0);
-                    {
-                        std::unique_lock<std::mutex> lock(ChunkMapMutex);
-                        auto it = chunks.find(neighC);
-                        if (it != chunks.end()) {
-                            return it->second.chunk[local_nx][a][b];
-                        }
-                    }
-                    return BlockType::AIR;
-                }
-            };
-            auto emitF = [&](glm::ivec3 pos, int h, int w) {
-                emitGreedyFace({fixed, pos.x, pos.y}, dir, h, w, globalOffset, vertices, indices);
-            };
-            FaceAxis axisObj{getBlock, getNeighbor, emitF, CHUNK_SIZE, CHUNK_SIZE};
-            GreedyMesh_Generic(axisObj);
+            greedyMeshSlice(currentChunk, neigh, fixed, dir, localN, globalOffset, vertices, indices);
         }
     }
-    // POSITIVE_Y
+    
     {
         direction dir = direction::POSITIVE_Y;
-        int axis = 1;
+        const Chunk* neigh = neighborChunks[2];
+        int localN = 0;
         for (int fixed = 0; fixed < CHUNK_SIZE; ++fixed) {
-            auto getBlock = [&](int a, int b, int) -> BlockType {
-                return getLocalBlock(a, fixed, b);
-            };
-            auto getNeighbor = [&](int a, int b, int) -> BlockType {
-                int ny = fixed + 1;
-                if (ny >= 0 && ny < CHUNK_SIZE) {
-                    return getLocalBlock(a, ny, b);
-                } else {
-                    glm::ivec3 neighC = chunkCoord;
-                    neighC[axis] += (ny >= CHUNK_SIZE ? 1 : -1);
-                    int local_ny = (ny >= CHUNK_SIZE ? 0 : CHUNK_SIZE - 1);
-                    {
-                        std::unique_lock<std::mutex> lock(ChunkMapMutex);
-                        auto it = chunks.find(neighC);
-                        if (it != chunks.end()) {
-                            return it->second.chunk[a][local_ny][b];
-                        }
-                    }
-                    return BlockType::AIR;
-                }
-            };
-            auto emitF = [&](glm::ivec3 pos, int h, int w) {
-                emitGreedyFace({pos.x, fixed, pos.y}, dir, h, w, globalOffset, vertices, indices);
-            };
-            FaceAxis axisObj{getBlock, getNeighbor, emitF, CHUNK_SIZE, CHUNK_SIZE};
-            GreedyMesh_Generic(axisObj);
+            greedyMeshSlice(currentChunk, neigh, fixed, dir, localN, globalOffset, vertices, indices);
         }
     }
-    // NEGATIVE_Y
+    
     {
         direction dir = direction::NEGATIVE_Y;
-        int axis = 1;
+        const Chunk* neigh = neighborChunks[3];
+        int localN = CHUNK_SIZE - 1;
         for (int fixed = 0; fixed < CHUNK_SIZE; ++fixed) {
-            auto getBlock = [&](int a, int b, int) -> BlockType {
-                return getLocalBlock(a, fixed, b);
-            };
-            auto getNeighbor = [&](int a, int b, int) -> BlockType {
-                int ny = fixed - 1;
-                if (ny >= 0 && ny < CHUNK_SIZE) {
-                    return getLocalBlock(a, ny, b);
-                } else {
-                    glm::ivec3 neighC = chunkCoord;
-                    neighC[axis] += (ny < 0 ? -1 : 1);
-                    int local_ny = (ny < 0 ? CHUNK_SIZE - 1 : 0);
-                    {
-                        std::unique_lock<std::mutex> lock(ChunkMapMutex);
-                        auto it = chunks.find(neighC);
-                        if (it != chunks.end()) {
-                            return it->second.chunk[a][local_ny][b];
-                        }
-                    }
-                    return BlockType::AIR;
-                }
-            };
-            auto emitF = [&](glm::ivec3 pos, int h, int w) {
-                emitGreedyFace({pos.x, fixed, pos.y}, dir, h, w, globalOffset, vertices, indices);
-            };
-            FaceAxis axisObj{getBlock, getNeighbor, emitF, CHUNK_SIZE, CHUNK_SIZE};
-            GreedyMesh_Generic(axisObj);
+            greedyMeshSlice(currentChunk, neigh, fixed, dir, localN, globalOffset, vertices, indices);
         }
     }
-    // POSITIVE_Z
+    
     {
         direction dir = direction::POSITIVE_Z;
-        int axis = 2;
+        const Chunk* neigh = neighborChunks[4];
+        int localN = 0;
         for (int fixed = 0; fixed < CHUNK_SIZE; ++fixed) {
-            auto getBlock = [&](int a, int b, int) -> BlockType {
-                return getLocalBlock(a, b, fixed);
-            };
-            auto getNeighbor = [&](int a, int b, int) -> BlockType {
-                int nz = fixed + 1;
-                if (nz >= 0 && nz < CHUNK_SIZE) {
-                    return getLocalBlock(a, b, nz);
-                } else {
-                    glm::ivec3 neighC = chunkCoord;
-                    neighC[axis] += (nz >= CHUNK_SIZE ? 1 : -1);
-                    int local_nz = (nz >= CHUNK_SIZE ? 0 : CHUNK_SIZE - 1);
-                    {
-                        std::unique_lock<std::mutex> lock(ChunkMapMutex);
-                        auto it = chunks.find(neighC);
-                        if (it != chunks.end()) {
-                            return it->second.chunk[a][b][local_nz];
-                        }
-                    }
-                    return BlockType::AIR;
-                }
-            };
-            auto emitF = [&](glm::ivec3 pos, int h, int w) {
-                emitGreedyFace({pos.x, pos.y, fixed}, dir, h, w, globalOffset, vertices, indices);
-            };
-            FaceAxis axisObj{getBlock, getNeighbor, emitF, CHUNK_SIZE, CHUNK_SIZE};
-            GreedyMesh_Generic(axisObj);
+            greedyMeshSlice(currentChunk, neigh, fixed, dir, localN, globalOffset, vertices, indices);
         }
     }
-    // NEGATIVE_Z
+    
     {
         direction dir = direction::NEGATIVE_Z;
-        int axis = 2;
+        const Chunk* neigh = neighborChunks[5];
+        int localN = CHUNK_SIZE - 1;
         for (int fixed = 0; fixed < CHUNK_SIZE; ++fixed) {
-            auto getBlock = [&](int a, int b, int) -> BlockType {
-                return getLocalBlock(a, b, fixed);
-            };
-            auto getNeighbor = [&](int a, int b, int) -> BlockType {
-                int nz = fixed - 1;
-                if (nz >= 0 && nz < CHUNK_SIZE) {
-                    return getLocalBlock(a, b, nz);
-                } else {
-                    glm::ivec3 neighC = chunkCoord;
-                    neighC[axis] += (nz < 0 ? -1 : 1);
-                    int local_nz = (nz < 0 ? CHUNK_SIZE - 1 : 0);
-                    {
-                        std::unique_lock<std::mutex> lock(ChunkMapMutex);
-                        auto it = chunks.find(neighC);
-                        if (it != chunks.end()) {
-                            return it->second.chunk[a][b][local_nz];
-                        }
-                    }
-                    return BlockType::AIR;
-                }
-            };
-            auto emitF = [&](glm::ivec3 pos, int h, int w) {
-                emitGreedyFace({pos.x, pos.y, fixed}, dir, h, w, globalOffset, vertices, indices);
-            };
-            FaceAxis axisObj{getBlock, getNeighbor, emitF, CHUNK_SIZE, CHUNK_SIZE};
-            GreedyMesh_Generic(axisObj);
+            greedyMeshSlice(currentChunk, neigh, fixed, dir, localN, globalOffset, vertices, indices);
         }
     }
 }
@@ -490,6 +405,10 @@ void World::fetchMergedMesh(std::vector<Vertex>& outVertices, std::vector<GLuint
     outIndices.clear();
     {
         std::unique_lock<std::mutex> lock(resultMutex);
+        size_t estVerts = 0;
+        for (const auto& p : generatedMeshes) estVerts += p.second.vertices.size();  
+        outVertices.reserve(estVerts);
+        outIndices.reserve(estVerts * 1.5);  
         GLuint offset = 0;
         for (const auto& p : generatedMeshes) {
             const auto& res = p.second;
@@ -505,7 +424,6 @@ void World::fetchMergedMesh(std::vector<Vertex>& outVertices, std::vector<GLuint
 std::vector<Vertex>& World::getVerticesReference() {
     return GlobalVertices;
 }
-
 std::vector<GLuint>& World::getIndicesReference() {
     return GlobalIndices;
 }

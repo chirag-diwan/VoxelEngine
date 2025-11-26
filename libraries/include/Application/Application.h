@@ -20,6 +20,7 @@
 #include "../World/World.h"
 #include "../InputHandler/InputHandler.h"
 #include "../Texture/Texture.h"
+#include "../Light/Light.h"
 
 
 class Application {
@@ -37,8 +38,9 @@ private:
     VBO _skyVbo;
     VAO _skyVao;
     float deltaTime;
-    int renderDistance = 10;
+    int renderDistance = 15;
     float Gravity = 1;
+    Light globalLight;
     static constexpr GLfloat skyVerts[] = {
         // Scale factor: 500.0f (tune: match your projection far plane / 2)
         -500,  500, -500,

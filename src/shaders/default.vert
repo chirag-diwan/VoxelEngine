@@ -9,12 +9,15 @@ uniform mat4 ProjectionMatrix;
 uniform int isSkyBox;  
 uniform vec3 aSunNormal;
 
+
+out vec3 FragCoord;
 out vec3 TexCoords;
 out vec3 Normal;
 flat out int passSkyBox;
 out vec3 SunNormal;
 
 void main() {
+    mat4 model = mat4(1.0);
     SunNormal = aSunNormal;
     passSkyBox = isSkyBox;
 
@@ -25,5 +28,6 @@ void main() {
     } else {
         Normal = aNormal;
         gl_Position = ProjectionMatrix * ViewMatrix * vec4(aPos, 1.0);
+        FragCoord = vec3(model*vec4(aPos , 1.0));
     }
 }

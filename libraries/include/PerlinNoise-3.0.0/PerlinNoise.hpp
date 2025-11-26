@@ -241,7 +241,7 @@ public:
     void fillNoise3D(const float* xs, const float* ys, const float* zs, float* out, size_t count) const noexcept;
 };
 
-using SimdPerlinNoise = SimdPerlinNoise<float>;
+//using SimdPerlinNoise = SimdPerlinNoise<float>;
 
 template<class Float>
 void SimdPerlinNoise<Float>::fillNoise3D(const float* xs, const float* ys, const float* zs, float* out, size_t count) const noexcept
